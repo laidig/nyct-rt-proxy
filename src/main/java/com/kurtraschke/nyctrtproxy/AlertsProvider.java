@@ -97,7 +97,8 @@ public class AlertsProvider {
   public void start() {
     if (_serviceAlertsUrl != null) {
       _httpClient = HttpClientBuilder.create().setConnectionManager(_connectionManager).build();
-      _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, _refreshRate, TimeUnit.SECONDS);
+      if (_scheduledExecutorService != null)
+       _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, _refreshRate, TimeUnit.SECONDS);
     }
   }
 
@@ -106,7 +107,9 @@ public class AlertsProvider {
     if (_updater != null) {
       _updater.cancel(false);
     }
-    _scheduledExecutorService.shutdown();
+    if (_scheduledExecutorService != null) {
+      _scheduledExecutorService.shutdown();
+    }
     _connectionManager.shutdown();
   }
 

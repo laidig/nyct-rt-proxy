@@ -21,6 +21,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
+import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.StopTime;
@@ -28,6 +29,7 @@ import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.gtfs.services.GtfsRelationalDao;
+import org.onebusaway.gtfs.services.calendar.CalendarServiceDataFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +61,10 @@ public class LazyTripMatcher implements TripMatcher {
   @Inject
   public void setGtfsRelationalDao(GtfsRelationalDao dao) {
     _dao = dao;
+    if (_csd == null) {
+      CalendarServiceDataFactory csdf = new CalendarServiceDataFactoryImpl(_dao);
+      _csd = csdf.createData();
+    }
   }
 
   @Inject
