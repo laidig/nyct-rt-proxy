@@ -98,7 +98,8 @@ public class NyctTripId {
    */
   public static NyctTripId buildFromTrip(Trip trip) {
     NyctTripId id = buildFromString(trip.getId().getId());
-    id.routeId = trip.getRoute().getId().getId();
+    if (id != null)
+      id.routeId = trip.getRoute().getId().getId();
     return id;
   }
 
@@ -112,7 +113,7 @@ public class NyctTripId {
    */
   public static NyctTripId buildFromTripDescriptor(GtfsRealtime.TripDescriptorOrBuilder td) {
     NyctTripId id = buildFromString(td.getTripId());
-    if (td.hasRouteId())
+    if (td.hasRouteId() && id != null)
       id.routeId = td.getRouteId();
     return id;
   }

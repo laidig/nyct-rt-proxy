@@ -189,6 +189,9 @@ public class TripUpdateProcessor {
             // Re-set the trip ID to the parsed trip ID; coerces IDs to a uniform format.
             // If the trip is matched, the ID will be rewritten again to the corresponding static trip ID below.
             tb.setTripId(rtid.toString());
+          } else {
+            _log.error("invalid trip_id={} train_id={}", tb.getTripId(), tb.getExtension(GtfsRealtimeNYCT.nyctTripDescriptor)
+                    .getTrainId());
           }
 
           // Some routes have start date set incorrectly

@@ -123,7 +123,7 @@ public class LazyTripMatcher implements TripMatcher {
     // We check through all trips. This could be easily restricted, but performance has not been a problem.
     for (Trip trip : _dao.getTripsForRoute(r)) {
       NyctTripId atid = NyctTripId.buildFromTrip(trip);
-      if (!atid.routeDirMatch(id))
+      if (atid == null || !atid.routeDirMatch(id))
         continue;
       List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
       int start = stopTimes.get(0).getDepartureTime(); // in sec into day.
