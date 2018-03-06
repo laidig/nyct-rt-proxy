@@ -106,6 +106,7 @@ public abstract class RtTestRunner {
 
         TripUpdateProcessor processor = new TripUpdateProcessor();
         processor.setLatencyLimit(-1);
+        processor.setCancelUnmatchedTrips(false);
         bind(TripUpdateProcessor.class)
                 .toInstance(processor);
 

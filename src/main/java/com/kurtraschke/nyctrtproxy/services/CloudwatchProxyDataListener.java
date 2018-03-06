@@ -93,7 +93,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     dim.setName("route");
     dim.setValue(routeId);
     reportMatches(timestamp, dim, metrics);
-    _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
+    _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
   @Override
@@ -103,7 +103,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     dim.setName("feed");
     dim.setValue(feedId);
     reportMatches(timestamp, dim, metrics);
-    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
+    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
   private void reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {

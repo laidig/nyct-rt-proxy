@@ -61,10 +61,6 @@ public class LazyTripMatcher implements TripMatcher {
   @Inject
   public void setGtfsRelationalDao(GtfsRelationalDao dao) {
     _dao = dao;
-    if (_csd == null) {
-      CalendarServiceDataFactory csdf = new CalendarServiceDataFactoryImpl(_dao);
-      _csd = csdf.createData();
-    }
   }
 
   @Inject

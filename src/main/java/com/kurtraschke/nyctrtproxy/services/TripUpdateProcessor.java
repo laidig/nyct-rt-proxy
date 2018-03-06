@@ -24,6 +24,9 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
+import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
+import com.google.transit.realtime.GtfsRealtime.TripDescriptor.ScheduleRelationship;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
@@ -40,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +70,10 @@ public class TripUpdateProcessor {
   private ProxyDataListener _listener;
 
   private TripMatcher _tripMatcher;
+
+  private TripActivator _tripActivator;
+
+  private boolean _cancelUnmatchedTrips = true;
 
   // config
   @Inject(optional = true)
@@ -96,9 +104,19 @@ public class TripUpdateProcessor {
     _listener = listener;
   }
 
+
+  @Inject
+  public void setTripActivator(TripActivator tripActivator) {
+    _tripActivator = tripActivator;
+  }
+
   @Inject
   public void setTripMatcher(TripMatcher tm) {
     _tripMatcher = tm;
+  }
+
+  public void setCancelUnmatchedTrips(boolean cancelUnmatchedTrips) {
+    _cancelUnmatchedTrips = cancelUnmatchedTrips;
   }
 
   public List<GtfsRealtime.TripUpdate> processFeed(Integer feedId, GtfsRealtime.FeedMessage fm) {
@@ -221,11 +239,12 @@ public class TripUpdateProcessor {
           }
         }
 
+        Set<String> matchedTripIds = new HashSet<>();
         // Read out results of matching. If there is a match, rewrite TU's trip ID. Add TU to return list.
         for (TripMatchResult result : matchesByTrip.values()) {
           if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
             if (result.hasResult() && !result.lastStopMatches()) {
-              _log.info("no stop match rt={} static={}. RT last stop={}, static last stop={}",
+              _log.debug("no stop match rt={} static={}. RT last stop={}, static last stop={}",
                       result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
                       result.getRtLastStop(), result.getStaticLastStop());
               result.setStatus(TripMatchResult.Status.NO_MATCH);
@@ -239,8 +258,9 @@ public class TripUpdateProcessor {
               _log.debug("matched {} -> {}", tb.getTripId(), staticTripId);
               tb.setTripId(staticTripId);
               removeTimepoints(at, tub);
+              matchedTripIds.add(staticTripId);
             } else {
-              _log.info("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
+              _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
             }
             ret.add(tub.build());
@@ -248,6 +268,28 @@ public class TripUpdateProcessor {
 
           routeMetrics.add(result);
           feedMetrics.add(result);
+        }
+
+        if (_cancelUnmatchedTrips) {
+          Iterator<ActivatedTrip> staticTrips = _tripActivator.getTripsForRangeAndRoute(start, end, routeId).iterator();
+          while (staticTrips.hasNext()) {
+            ActivatedTrip at = staticTrips.next();
+            if (!matchedTripIds.contains(at.getTrip().getId().getId())) {
+              long time = fm.getHeader().getTimestamp();
+              if (at.activeFor(trp, time)) {
+                TripUpdate.Builder tub = TripUpdate.newBuilder();
+                TripDescriptor.Builder tdb = tub.getTripBuilder();
+                tdb.setTripId(at.getTrip().getId().getId());
+                tdb.setRouteId(at.getTrip().getRoute().getId().getId());
+                tdb.setStartDate(at.getServiceDate().getAsString());
+                tdb.setScheduleRelationship(ScheduleRelationship.CANCELED);
+                ret.add(tub.build());
+
+                routeMetrics.addCancelled();
+                feedMetrics.addCancelled();
+              }
+            }
+          }
         }
 
         if (_listener != null)

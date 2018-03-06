@@ -30,7 +30,7 @@ import java.util.Set;
  */
 public class MatchMetrics {
 
-  private int nMatchedTrips = 0, nAddedTrips = 0;
+  private int nMatchedTrips = 0, nCancelledTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
     nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0, nMergedTrips = 0;
 
@@ -100,6 +100,10 @@ public class MatchMetrics {
     return latency;
   }
 
+  public void addCancelled() {
+    nCancelledTrips++;
+  }
+
   /**
    * Return a set of Cloudwatch metric data based on currently aggregated data.
    *
@@ -140,6 +144,7 @@ public class MatchMetrics {
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
+    MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
     MetricDatum dDuplicateTrips = metricCount(timestamp, "DuplicateTripMatches", nDuplicates, dim);
     MetricDatum dBadId = metricCount(timestamp, "UnmatchedBadId", nBadId, dim);
     MetricDatum dMerged = metricCount(timestamp, "MergedTrips", nMergedTrips, dim);
@@ -153,7 +158,7 @@ public class MatchMetrics {
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
     MetricDatum dMergedPct = metricPct(timestamp, "MergedTripsPct", nMergedPct, dim);
 
-    return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dUnmatchedWithoutStartDatePct,
+    return Sets.newHashSet(dMatched, dAdded, dCancelled, dMatchedRtPct, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatchPct,
             dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dMerged, dMergedPct);
   }
@@ -164,6 +169,10 @@ public class MatchMetrics {
 
   public int getAddedTrips() {
     return nAddedTrips;
+  }
+
+  public int getCancelledTrips() {
+    return nCancelledTrips;
   }
 
   public int getDuplicates() {
