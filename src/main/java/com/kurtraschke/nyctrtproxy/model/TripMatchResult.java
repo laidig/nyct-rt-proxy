@@ -45,12 +45,14 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
   private ActivatedTrip result;
   private int delta; // lateness of RT trip relative to static trip
   private TripUpdateOrBuilder tripUpdate;
+  private String rtTripId;
 
   public TripMatchResult(TripUpdateOrBuilder tripUpdate, Status status, ActivatedTrip result, int delta) {
     this.tripUpdate = tripUpdate;
     this.status = status;
     this.result = result;
     this.delta = delta;
+    this.rtTripId = tripUpdate.getTrip().getTripId();
   }
 
   // strict match
@@ -124,8 +126,8 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
   public boolean lastStopMatches() {
     if (!hasResult())
       throw new IllegalArgumentException("Cannot call lastStopMatches on a match result without an ActivatedTrip");
-    String staticStop = result.getStopTimes().get(result.getStopTimes().size() - 1).getStop().getId().getId();
-    String rtStop = tripUpdate.getStopTimeUpdate(tripUpdate.getStopTimeUpdateCount() - 1).getStopId();
+    String staticStop = getStaticLastStop();
+    String rtStop = getRtLastStop();
     return staticStop.equals(rtStop);
   }
 
@@ -133,4 +135,15 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
     return hasResult() ? result.getTrip().getId().getId() : tripUpdate.getTrip().getTripId();
   }
 
+  public String getStaticLastStop() {
+    return result.getStopTimes().get(result.getStopTimes().size() - 1).getStop().getId().getId();
+  }
+
+  public String getRtLastStop() {
+    return tripUpdate.getStopTimeUpdate(tripUpdate.getStopTimeUpdateCount() - 1).getStopId();
+  }
+
+  public String getRtTripId() {
+    return rtTripId;
+  }
 }

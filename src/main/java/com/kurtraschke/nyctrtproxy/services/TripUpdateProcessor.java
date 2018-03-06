@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -204,14 +205,29 @@ public class TripUpdateProcessor {
         }
 
         // For TUs that match to same trip - possible they should be merged (route D has mid-line relief points where trip ID changes)
-        for (Collection<TripMatchResult> matches : matchesByTrip.asMap().values())
-          tryMergeResult(matches);
+        // If they are NOT merged, then drop the matches for the worse ones
+        for (Collection<TripMatchResult> matches : matchesByTrip.asMap().values()) {
+          if (!tryMergeResult(matches) && matches.size() > 1) {
+            List<TripMatchResult> dups = new ArrayList<>(matches);
+            dups.sort(Collections.reverseOrder());
+            TripMatchResult best = dups.get(0);
+            for (int i = 1; i < dups.size(); i++) {
+              TripMatchResult result = dups.get(i);
+              _log.debug("dropping duplicate in static trip={}, RT trip={} ({}). Better trip is {} ({})",
+                      best.getTripId(), result.getRtTripId(), result.getStatus(), best.getRtTripId(), best.getStatus());
+              result.setStatus(TripMatchResult.Status.NO_MATCH);
+              result.setResult(null);
+            }
+          }
+        }
 
         // Read out results of matching. If there is a match, rewrite TU's trip ID. Add TU to return list.
         for (TripMatchResult result : matchesByTrip.values()) {
           if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
             if (result.hasResult() && !result.lastStopMatches()) {
-              _log.info("no stop match rt={} static={}", result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId());
+              _log.info("no stop match rt={} static={}. RT last stop={}, static last stop={}",
+                      result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
+                      result.getRtLastStop(), result.getStaticLastStop());
               result.setStatus(TripMatchResult.Status.NO_MATCH);
               result.setResult(null);
             }
@@ -224,7 +240,7 @@ public class TripUpdateProcessor {
               tb.setTripId(staticTripId);
               removeTimepoints(at, tub);
             } else {
-              _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
+              _log.info("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
             }
             ret.add(tub.build());
@@ -274,11 +290,12 @@ public class TripUpdateProcessor {
   // for trips which have mid-line crew relief (route D).
   // The mid-line relief points are in the train ID so we can reconstruct
   // the whole trip if those points match.
-  private void tryMergeResult(Collection<TripMatchResult> col) {
+  /** return true if merged, false otherwise */
+  private boolean tryMergeResult(Collection<TripMatchResult> col) {
     if (col.size() != 2)
-      return;
+      return false;
     Iterator<TripMatchResult> iter = col.iterator();
-    mergedResult(iter.next(), iter.next());
+    return mergedResult(iter.next(), iter.next()) != null;
   }
 
   private TripMatchResult mergedResult(TripMatchResult first, TripMatchResult second) {
