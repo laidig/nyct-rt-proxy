@@ -19,6 +19,8 @@ import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
+import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
+import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeFullUpdate;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeGuiceBindingTypes.TripUpdates;
@@ -38,7 +40,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URI;
@@ -76,6 +77,8 @@ public class ProxyProvider {
   private ScheduledFuture _updater;
 
   private TripUpdateProcessor _processor;
+
+  private ProxyDataListener _listener;
 
   private int _nTries = 5;
 
@@ -138,6 +141,11 @@ public class ProxyProvider {
     _processor = processor;
   }
 
+  @Inject(optional = true)
+  public void setListener(ProxyDataListener listener) {
+    _listener = listener;
+  }
+
   @PostConstruct
   public void start() {
     _httpClient = HttpClientBuilder.create().setConnectionManager(_connectionManager).build();
@@ -160,6 +168,8 @@ public class ProxyProvider {
     GtfsRealtimeFullUpdate grfu = new GtfsRealtimeFullUpdate();
 
     List<TripUpdate> tripUpdates = Lists.newArrayList();
+
+    MatchMetrics totalMetrics = new MatchMetrics();
 
     // For each feed ID, read in GTFS-RT, process trip updates, push to output.
     for (int feedId : _feedIds) {
@@ -196,12 +206,11 @@ public class ProxyProvider {
 
       if (message != null) {
         try {
-          tripUpdates.addAll(_processor.processFeed(feedId, message));
+          tripUpdates.addAll(_processor.processFeed(feedId, message, totalMetrics));
         } catch (Exception e) {
           e.printStackTrace();
         }
       }
-
     }
 
     for (TripUpdate tu : tripUpdates) {
@@ -211,7 +220,12 @@ public class ProxyProvider {
       grfu.addEntity(feb.build());
     }
 
+    _log.info("writing {} total trip updates", tripUpdates.size());
+
     _tripUpdatesSink.handleFullUpdate(grfu);
+
+    if (_listener != null)
+      _listener.reportMatchesTotal(totalMetrics);
   }
 
 

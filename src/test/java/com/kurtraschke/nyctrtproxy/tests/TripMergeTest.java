@@ -17,6 +17,7 @@ package com.kurtraschke.nyctrtproxy.tests;
 
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
+import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.junit.Test;
@@ -46,7 +47,7 @@ public class TripMergeTest extends RtTestRunner {
     int feedId = 21;
 
     FeedMessage msg = readFeedMessage(protobuf);
-    List<TripUpdate> updates = _processor.processFeed(feedId, msg);
+    List<TripUpdate> updates = _processor.processFeed(feedId, msg, new MatchMetrics());
 
     // we expect these to get merged:
     // 098650_D..S (D01, D03) 099050_D..S (lots of stops)

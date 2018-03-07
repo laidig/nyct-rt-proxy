@@ -25,4 +25,5 @@ import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 public interface ProxyDataListener {
   void reportMatchesForRoute(String routeId, MatchMetrics metrics);
   void reportMatchesForFeed(String feedId, MatchMetrics metrics);
+  void reportMatchesTotal(MatchMetrics metrics);
 }

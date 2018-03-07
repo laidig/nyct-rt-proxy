@@ -17,6 +17,7 @@ package com.kurtraschke.nyctrtproxy.tests;
 
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
+import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.junit.Test;
 import org.onebusaway.gtfs.model.Trip;
@@ -90,7 +91,7 @@ public class SanityTest extends RtTestRunner {
 
   private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
     FeedMessage msg = readFeedMessage(protobuf);
-    List<TripUpdate> updates = _processor.processFeed(feedId, msg);
+    List<TripUpdate> updates = _processor.processFeed(feedId, msg, new MatchMetrics());
 
     int nScheduled = 0, nAdded = 0, nRt = 0;
 

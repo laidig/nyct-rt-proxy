@@ -58,6 +58,8 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
 
   private boolean _disabled = false;
 
+  private boolean _verbose = false;
+
   private AmazonCloudWatchAsync _client;
 
   private AsyncHandler<PutMetricDataRequest, PutMetricDataResult> _handler;
@@ -106,11 +108,18 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
+  @Override
+  public void reportMatchesTotal(MatchMetrics metrics) {
+    Date timestamp = new Date();
+    reportMatches(timestamp, null, metrics);
+    _log.info("time={} total: nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
+  }
+
   private void reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {
     if (_disabled)
       return;
 
-    Set<MetricDatum> data = metrics.getReportedMetrics(dim, timestamp);
+    Set<MetricDatum> data = metrics.getReportedMetrics(_verbose, dim, timestamp);
     PutMetricDataRequest request = new PutMetricDataRequest()
             .withMetricData(data)
             .withNamespace(_namespace);
@@ -118,4 +127,19 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     _client.putMetricDataAsync(request, _handler);
   }
 
+  public void setNamespace(String namespace) {
+    _namespace = namespace;
+  }
+
+  public void setAccessKey(String accessKey) {
+    _accessKey = accessKey;
+  }
+
+  public void setSecretKey(String secretKey) {
+    _secretKey = secretKey;
+  }
+
+  public void setVerbose(boolean verbose) {
+    _verbose = _verbose;
+  }
 }

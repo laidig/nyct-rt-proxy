@@ -115,11 +115,12 @@ public class TripUpdateProcessor {
     _tripMatcher = tm;
   }
 
+  @Inject(optional = true)
   public void setCancelUnmatchedTrips(boolean cancelUnmatchedTrips) {
     _cancelUnmatchedTrips = cancelUnmatchedTrips;
   }
 
-  public List<GtfsRealtime.TripUpdate> processFeed(Integer feedId, GtfsRealtime.FeedMessage fm) {
+  public List<GtfsRealtime.TripUpdate> processFeed(Integer feedId, GtfsRealtime.FeedMessage fm, MatchMetrics totalMetrics) {
 
     MatchMetrics feedMetrics = new MatchMetrics();
     feedMetrics.reportLatency(fm.getHeader().getTimestamp());
@@ -134,7 +135,7 @@ public class TripUpdateProcessor {
     final Map<String, String> realtimeToStaticRouteMap = _realtimeToStaticRouteMapByFeed
             .getOrDefault(feedId, Collections.emptyMap());
 
-    int nExpiredTus = 0;
+    int nExpiredTus = 0, nTotalRecords = 0;
 
     // Read in trip updates per route. Skip trip updates that have too stale of data.
     Multimap<String, GtfsRealtime.TripUpdate> tripUpdatesByRoute = ArrayListMultimap.create();
@@ -149,8 +150,10 @@ public class TripUpdateProcessor {
           routeId = realtimeToStaticRouteMap.getOrDefault(routeId, routeId);
           tripUpdatesByRoute.put(routeId, tu);
         }
+        nTotalRecords++;
       }
     }
+    reportRecordsIn(nTotalRecords, nExpiredTus, totalMetrics, feedMetrics);
 
     List<GtfsRealtime.TripUpdate> ret = Lists.newArrayList();
 
@@ -184,6 +187,7 @@ public class TripUpdateProcessor {
 
         Multimap<String, TripMatchResult> matchesByTrip = ArrayListMultimap.create();
         Collection<GtfsRealtime.TripUpdate> tripUpdates = tripUpdatesByRoute.get(routeId);
+        routeMetrics.reportRecordsIn(tripUpdates.size());
         for (GtfsRealtime.TripUpdate tu : tripUpdates) {
           GtfsRealtime.TripUpdate.Builder tub = GtfsRealtime.TripUpdate.newBuilder(tu);
           GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
@@ -268,6 +272,7 @@ public class TripUpdateProcessor {
 
           routeMetrics.add(result);
           feedMetrics.add(result);
+          totalMetrics.add(result);
         }
 
         if (_cancelUnmatchedTrips) {
@@ -287,6 +292,7 @@ public class TripUpdateProcessor {
 
                 routeMetrics.addCancelled();
                 feedMetrics.addCancelled();
+                totalMetrics.addCancelled();
               }
             }
           }
@@ -374,5 +380,12 @@ public class TripUpdateProcessor {
     if (pt >= points.length)
       return null;
     return points[pt];
+  }
+
+  private void reportRecordsIn(int recordsIn, int expiredUpdates, MatchMetrics... metrics) {
+    for (MatchMetrics m : metrics) {
+      m.reportRecordsIn(recordsIn);
+      m.reportExpiredUpdates(expiredUpdates);
+    }
   }
 }
