@@ -38,7 +38,7 @@ public class MatchMetrics {
 
   private long latency = -1;
 
-  Set<String> tripIds = Sets.newHashSet();
+  private Set<String> tripIds = Sets.newHashSet();
 
   /**
    * Add results of a match to currently aggregated metrics.

@@ -94,7 +94,8 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     Dimension dim = new Dimension();
     dim.setName("route");
     dim.setValue(routeId);
-    reportMatches(timestamp, dim, metrics);
+    if (!reportMatches(timestamp, dim, metrics) && !_disabled)
+      _log.info("Cloudwatch: no data reported for route={}", routeId);
     _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
@@ -104,27 +105,32 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     Dimension dim = new Dimension();
     dim.setName("feed");
     dim.setValue(feedId);
-    reportMatches(timestamp, dim, metrics);
+    if (!reportMatches(timestamp, dim, metrics) && !_disabled)
+      _log.info("Cloudwatch: no data reported for feed={}", feedId);
     _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
   @Override
   public void reportMatchesTotal(MatchMetrics metrics) {
     Date timestamp = new Date();
-    reportMatches(timestamp, null, metrics);
+    if (!reportMatches(timestamp, null, metrics) && !_disabled)
+      _log.info("Cloudwatch: no data reported for total metrics.");
     _log.info("time={} total: nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
-  private void reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {
+  private boolean reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {
     if (_disabled)
-      return;
+      return false;
 
     Set<MetricDatum> data = metrics.getReportedMetrics(_verbose, dim, timestamp);
+    if (data.isEmpty())
+      return false;
     PutMetricDataRequest request = new PutMetricDataRequest()
             .withMetricData(data)
             .withNamespace(_namespace);
 
     _client.putMetricDataAsync(request, _handler);
+    return true;
   }
 
   public void setNamespace(String namespace) {
