@@ -21,6 +21,10 @@
       <id>snapshots.staging.obanyc.com</id>
       <url>http://build.staging.obanyc.com/archiva/repository/snapshots/</url>
     </repository>
+    <repository>
+      <id>releases.staging.obanyc.com</id>
+      <url>http://build.staging.obanyc.com/archiva/repository/releases/</url>
+    </repository>
   </repositories>
   
   <dependencies>
