@@ -25,6 +25,7 @@ import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -74,7 +75,7 @@ public class SanityTest extends RtTestRunner {
 
   @Test
   public void test21_2017_04_20() throws Exception {
-    test(21, "21_2017-04-20.pb", 43, 1);
+    test(21, "21_2017-04-20.pb", 40, 4);
   }
 
   // Test overnight service
@@ -93,7 +94,9 @@ public class SanityTest extends RtTestRunner {
     FeedMessage msg = readFeedMessage(protobuf);
     List<TripUpdate> updates = _processor.processFeed(feedId, msg, new MatchMetrics());
 
-    int nScheduled = 0, nAdded = 0, nRt = 0;
+    int nScheduled = 0, nAdded = 0, nRt = 0, nDuplicates = 0;
+
+    Set<String> tripIds = new HashSet<>();
 
     for (TripUpdate tripUpdate : updates) {
       switch(tripUpdate.getTrip().getScheduleRelationship()) {
@@ -110,9 +113,13 @@ public class SanityTest extends RtTestRunner {
         default:
           throw new Exception("unexpected schedule relationship");
       }
+      String tripId = tripUpdate.getTrip().getTripId();
+      if (tripIds.contains(tripId))
+        nDuplicates++;
+      tripIds.add(tripId);
     }
 
-    _log.info("nScheduled={}, nAdded={}", nScheduled, nAdded);
+    _log.info("nScheduled={}, nAdded={}, nDuplicates={}", nScheduled, nAdded, nDuplicates);
     // make sure we have improved or stayed the same
     assertTrue(nScheduled >= nScheduledExpected);
     assertTrue(nAdded <= nAddedExpected);

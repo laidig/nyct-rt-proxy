@@ -79,6 +79,8 @@ public class TripUpdateProcessor {
 
   private DirectionsService _directionsService;
 
+  private boolean _allowDuplicates = false;
+
   // config
   @Inject(optional = true)
   public void setLatencyLimit(@Named("NYCT.latencyLimit") int limit) {
@@ -101,6 +103,11 @@ public class TripUpdateProcessor {
   public void setAddToTripReplacementPeriodByRoute(@Named("NYCT.addToTripReplacementPeriodByRoute") String json) {
     Type type = new TypeToken<Map<String, String>>(){}.getType();
     _addToTripReplacementPeriodByRoute = new Gson().fromJson(json, type);
+  }
+
+  @Inject(optional = true)
+  public void setAllowDuplicates(boolean allowDuplicates) {
+    _allowDuplicates = allowDuplicates;
   }
 
   @Inject(optional = true)
@@ -238,7 +245,7 @@ public class TripUpdateProcessor {
         // For TUs that match to same trip - possible they should be merged (route D has mid-line relief points where trip ID changes)
         // If they are NOT merged, then drop the matches for the worse ones
         for (Collection<TripMatchResult> matches : matchesByTrip.asMap().values()) {
-          if (!tryMergeResult(matches) && matches.size() > 1) {
+          if (!tryMergeResult(matches) && matches.size() > 1 && !_allowDuplicates) {
             List<TripMatchResult> dups = new ArrayList<>(matches);
             dups.sort(Collections.reverseOrder());
             TripMatchResult best = dups.get(0);
