@@ -282,6 +282,7 @@ public class TripUpdateProcessor {
             } else {
               _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
+              removeTimepoints(tub);
               // Trip Headsign
               String tripHeadsign = result.getRtLastStop();
               if(StringUtils.isNotBlank(tripHeadsign)) {
@@ -356,6 +357,17 @@ public class TripUpdateProcessor {
     for(int i = 0; i < tripUpdate.getStopTimeUpdateCount(); i++) {
       String id = tripUpdate.getStopTimeUpdate(i).getStopId();
       if (!stopIds.contains(id)) {
+        tripUpdate.removeStopTimeUpdate(i);
+        i--;
+      }
+    }
+  }
+
+  // remove all stops NOT in static data
+  private void removeTimepoints(TripUpdate.Builder tripUpdate) {
+    for(int i = 0; i < tripUpdate.getStopTimeUpdateCount(); i++) {
+      String id = tripUpdate.getStopTimeUpdate(i).getStopId();
+      if (!_tripActivator.isStopInStaticData(id)) {
         tripUpdate.removeStopTimeUpdate(i);
         i--;
       }
