@@ -29,10 +29,12 @@ import com.google.transit.realtime.GtfsRealtime.TripDescriptor.ScheduleRelations
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
+import com.google.transit.realtime.GtfsRealtimeOneBusAway;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +76,8 @@ public class TripUpdateProcessor {
   private TripActivator _tripActivator;
 
   private boolean _cancelUnmatchedTrips = true;
+
+  private DirectionsService _directionsService;
 
   // config
   @Inject(optional = true)
@@ -118,6 +122,11 @@ public class TripUpdateProcessor {
   @Inject(optional = true)
   public void setCancelUnmatchedTrips(boolean cancelUnmatchedTrips) {
     _cancelUnmatchedTrips = cancelUnmatchedTrips;
+  }
+
+  @Inject(optional = true)
+  public void setDirectionsService(DirectionsService directionsService){
+    _directionsService = directionsService;
   }
 
   public List<GtfsRealtime.TripUpdate> processFeed(Integer feedId, GtfsRealtime.FeedMessage fm, MatchMetrics totalMetrics) {
@@ -266,8 +275,20 @@ public class TripUpdateProcessor {
             } else {
               _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
+              // Trip Headsign
+              String tripHeadsign = result.getRtLastStop();
+              if(StringUtils.isNotBlank(tripHeadsign)) {
+                GtfsRealtimeOneBusAway.OneBusAwayTripUpdate obaTripUpdate = GtfsRealtimeOneBusAway.OneBusAwayTripUpdate
+                        .newBuilder().setTripHeadsign(tripHeadsign).build();
+                tub.setExtension(GtfsRealtimeOneBusAway.obaTripUpdate, obaTripUpdate);
+
+                //Stop Headsign
+                if(_directionsService !=null)
+                  _directionsService.fillStopHeadSigns(tub.getStopTimeUpdateBuilderList());
+              }
             }
-            ret.add(tub.build());
+            TripUpdate tripUpdate = tub.build();
+            ret.add(tripUpdate);
           }
 
           routeMetrics.add(result);
