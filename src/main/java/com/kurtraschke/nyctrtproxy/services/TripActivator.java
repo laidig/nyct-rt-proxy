@@ -16,6 +16,7 @@
 package com.kurtraschke.nyctrtproxy.services;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
+import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
@@ -30,6 +31,7 @@ import com.vividsolutions.jts.index.strtree.SIRtree;
 import java.util.Date;
 import java.util.IntSummaryStatistics;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -53,6 +55,8 @@ public class TripActivator {
   private int maxLookback;
   
   private String _agencyId = "MTA NYCT";
+
+  private Set<String> _stopIds;
   
   private static final Logger _log = LoggerFactory.getLogger(TripActivator.class);
 
@@ -98,6 +102,10 @@ public class TripActivator {
     tripTimesTree.build();
 
     maxLookback = getMaxLookback();
+
+    _stopIds = _dao.getAllStops().stream()
+            .map(s -> s.getId().getId())
+            .collect(Collectors.toSet());
   }
 
   private int getMaxLookback() {
@@ -145,6 +153,10 @@ public class TripActivator {
 
   public Stream<ActivatedTrip> getTripsForRangeAndRoute(Date start, Date end, String routeId) {
     return getTripsForRangeAndRoutes(start, end, ImmutableSet.of(routeId));
+  }
+
+  public boolean isStopInStaticData(String stop) {
+      return _stopIds.contains(stop);
   }
 
 }
