@@ -138,8 +138,10 @@ public class TripUpdateProcessor {
 
   public List<GtfsRealtime.TripUpdate> processFeed(Integer feedId, GtfsRealtime.FeedMessage fm, MatchMetrics totalMetrics) {
 
+    long timestamp = fm.getHeader().getTimestamp();
+
     MatchMetrics feedMetrics = new MatchMetrics();
-    feedMetrics.reportLatency(fm.getHeader().getTimestamp());
+    feedMetrics.reportLatency(timestamp);
 
     if (_latencyLimit > 0 && feedMetrics.getLatency() > _latencyLimit) {
       _log.info("Feed {} ignored, too high latency = {}", feedId, feedMetrics.getLatency());
@@ -295,6 +297,7 @@ public class TripUpdateProcessor {
                   _directionsService.fillStopHeadSigns(tub.getStopTimeUpdateBuilderList());
               }
             }
+            tub.setTimestamp(timestamp);
             TripUpdate tripUpdate = tub.build();
             ret.add(tripUpdate);
           }
