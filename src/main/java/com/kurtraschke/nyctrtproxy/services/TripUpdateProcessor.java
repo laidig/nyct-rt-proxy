@@ -286,7 +286,8 @@ public class TripUpdateProcessor {
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
               removeTimepoints(tub);
               // Trip Headsign
-              String tripHeadsign = result.getRtLastStop();
+              String stopId = result.getRtLastStop();
+              String tripHeadsign = _tripActivator.getStopNameForId(stopId);
               if(StringUtils.isNotBlank(tripHeadsign)) {
                 GtfsRealtimeOneBusAway.OneBusAwayTripUpdate obaTripUpdate = GtfsRealtimeOneBusAway.OneBusAwayTripUpdate
                         .newBuilder().setTripHeadsign(tripHeadsign).build();

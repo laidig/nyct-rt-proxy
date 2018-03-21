@@ -159,4 +159,8 @@ public class TripActivator {
       return _stopIds.contains(stop);
   }
 
+  public String getStopNameForId(String stop) {
+      return _dao.getStopForId(new AgencyAndId(_agencyId, stop)).getName();
+  }
+
 }
