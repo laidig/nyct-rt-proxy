@@ -17,8 +17,12 @@ package com.kurtraschke.nyctrtproxy.model;
 
 import com.google.transit.realtime.GtfsRealtime;
 import org.apache.commons.lang3.StringUtils;
+import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,6 +34,15 @@ import java.util.regex.Pattern;
  * @author kurt
  */
 public class NyctTripId {
+
+  private static final Pattern _rtTripPattern = Pattern.compile(
+          "([A-Z0-9]+_)?(?<originDepartureTime>[0-9-]{6})_?(?<route>[A-Z0-9]+)\\.+(?<direction>[NS])(?<network>[A-Z0-9]*)$");
+
+  private static final Pattern _staticTripPattern = Pattern.compile(
+          "(?<route>[A-Z0-9]+)\\.+(?<direction>[NS])(?<network>[A-Z0-9]*)$"
+  );
+
+  private static final Logger _log = LoggerFactory.getLogger(NyctTripId.class);
 
   private int originDepartureTime;
   private String pathId;
@@ -68,9 +81,7 @@ public class NyctTripId {
     int originDepartureTime;
     String pathId, routeId, directionId, networkId;
 
-    Pattern pat = Pattern.compile("([A-Z0-9]+_)?(?<originDepartureTime>[0-9-]{6})_?(?<route>[A-Z0-9]+)\\.+(?<direction>[NS])(?<network>[A-Z0-9]*)$");
-
-    Matcher matcher = pat.matcher(tripId);
+    Matcher matcher = _rtTripPattern.matcher(tripId);
 
     if (matcher.find()) {
       originDepartureTime = Integer.parseInt(matcher.group("originDepartureTime"), 10);
@@ -102,6 +113,32 @@ public class NyctTripId {
       id.routeId = trip.getRoute().getId().getId();
     return id;
   }
+
+
+   /**
+    * Build a NyctTripId from a trip and stop times - we cannot count on tripIds in ATIS GTFS
+    */
+   public static NyctTripId buildFromGtfs(Trip trip, List<StopTime> stopTimes) {
+     int originDepartureTime = (stopTimes.get(0).getDepartureTime() * 100) / 60;
+     String pathId = trip.getMtaTripId();
+     String routeId = trip.getRoute().getId().getId();
+     String directionId = trip.getDirectionId().equals("0") ? "N" : "S";
+     String networkId = null;
+     if (pathId != null) {
+       Matcher matcher = _staticTripPattern.matcher(pathId);
+       if (matcher.find()) {
+         networkId = matcher.group("network");
+       } else throw new IllegalArgumentException("bad path ID");
+     } else {
+       // for tests- may as well check the trip ID as per non-ATIS GTFS
+       NyctTripId other = buildFromString(trip.getId().getId());
+       if (other != null) {
+         pathId = other.pathId;
+         networkId = other.networkId;
+       }
+     }
+     return new NyctTripId(originDepartureTime, pathId, routeId, directionId, networkId);
+   }
 
   /**
    * Build a NyctTripId from a TripDescriptor
@@ -141,6 +178,7 @@ public class NyctTripId {
    */
   public boolean strictMatch(NyctTripId other) {
     return  looseMatch(other)
+            && networkId != null
             && getNetworkId().equals(other.getNetworkId());
   }
 

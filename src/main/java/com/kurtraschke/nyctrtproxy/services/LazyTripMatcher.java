@@ -118,10 +118,12 @@ public class LazyTripMatcher implements TripMatcher {
 
     // We check through all trips. This could be easily restricted, but performance has not been a problem.
     for (Trip trip : _dao.getTripsForRoute(r)) {
-      NyctTripId atid = NyctTripId.buildFromTrip(trip);
+      List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
+      if (stopTimes.isEmpty())
+        continue;
+      NyctTripId atid = NyctTripId.buildFromGtfs(trip, stopTimes);
       if (atid == null || !atid.routeDirMatch(id))
         continue;
-      List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
       int start = stopTimes.get(0).getDepartureTime(); // in sec into day.
       int end = stopTimes.get(stopTimes.size()-1).getArrivalTime();
       boolean onServiceDay = serviceIds.contains(trip.getServiceId());

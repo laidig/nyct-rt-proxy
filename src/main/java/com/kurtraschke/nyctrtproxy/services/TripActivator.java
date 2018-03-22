@@ -146,7 +146,8 @@ public class TripActivator {
               return tripsStream
                       .filter(t -> routeIds.contains(t.getRoute().getId().getId()))
                       .filter(t -> serviceIdsForDate.contains(t.getServiceId()))
-                      .map(t -> new ActivatedTrip(sd, t, _dao.getStopTimesForTrip(t)));
+                      .map(t -> new ActivatedTrip(sd, t, _dao.getStopTimesForTrip(t)))
+                      .filter(at -> at.getStart() != -1); // filter trips w/o stop_times
             });
 
   }

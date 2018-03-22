@@ -285,6 +285,9 @@ public class TripUpdateProcessor {
               _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
               removeTimepoints(tub);
+              // this is only happening because of a missing stop in ATIS data...
+              if (tub.getStopTimeUpdateCount() == 0)
+                continue;
               // Trip Headsign
               String stopId = result.getRtLastStop();
               String tripHeadsign = _tripActivator.getStopNameForId(stopId);

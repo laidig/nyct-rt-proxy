@@ -20,6 +20,8 @@ import com.google.transit.realtime.GtfsRealtime.TimeRange;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -29,6 +31,8 @@ import java.util.List;
  * @author kurt
  */
 public class ActivatedTrip {
+
+  private static Logger _log = LoggerFactory.getLogger(ActivatedTrip.class);
 
   private final ServiceDate sd;
   private final Trip theTrip;
@@ -41,8 +45,8 @@ public class ActivatedTrip {
     this.sd = sd;
     this.theTrip = theTrip;
     this.parsedTripId = NyctTripId.buildFromTrip(theTrip);
-    int startSec = stopTimes.get(0).getDepartureTime();
-    int endSec = stopTimes.get(stopTimes.size() - 1).getArrivalTime();
+    int startSec = stopTimes.isEmpty() ? -1 : stopTimes.get(0).getDepartureTime();
+    int endSec = stopTimes.isEmpty() ? -1 : stopTimes.get(stopTimes.size() - 1).getArrivalTime();
     this.start = sd.getAsDate().getTime()/1000 + startSec;
     this.end = sd.getAsDate().getTime()/1000 + endSec;
     this.stopTimes = stopTimes;
