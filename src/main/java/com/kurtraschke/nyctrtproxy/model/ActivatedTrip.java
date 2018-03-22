@@ -44,7 +44,7 @@ public class ActivatedTrip {
   public ActivatedTrip(ServiceDate sd, Trip theTrip, List<StopTime> stopTimes) {
     this.sd = sd;
     this.theTrip = theTrip;
-    this.parsedTripId = NyctTripId.buildFromTrip(theTrip);
+    this.parsedTripId = NyctTripId.buildFromGtfs(theTrip, stopTimes);
     int startSec = stopTimes.isEmpty() ? -1 : stopTimes.get(0).getDepartureTime();
     int endSec = stopTimes.isEmpty() ? -1 : stopTimes.get(stopTimes.size() - 1).getArrivalTime();
     this.start = sd.getAsDate().getTime()/1000 + startSec;

@@ -67,6 +67,8 @@ public class TripUpdateProcessor {
 
   private Map<String, String> _addToTripReplacementPeriodByRoute = ImmutableMap.of("6", "6X");
 
+  private Set<String> _routesWithReverseRTDirections = Collections.emptySet();
+
   private int _latencyLimit = 300;
 
   private ProxyDataListener _listener;
@@ -103,6 +105,12 @@ public class TripUpdateProcessor {
   public void setAddToTripReplacementPeriodByRoute(@Named("NYCT.addToTripReplacementPeriodByRoute") String json) {
     Type type = new TypeToken<Map<String, String>>(){}.getType();
     _addToTripReplacementPeriodByRoute = new Gson().fromJson(json, type);
+  }
+
+  @Inject(optional = true)
+  public void setRoutesWithReverseRTDirections(@Named("NYCT.routesWithReverseRTDirections") String json) {
+    Type type = new TypeToken<Set<String>>(){}.getType();
+    _routesWithReverseRTDirections = new Gson().fromJson(json, type);
   }
 
   @Inject(optional = true)
@@ -214,7 +222,7 @@ public class TripUpdateProcessor {
           tb.setRouteId(realtimeToStaticRouteMap.getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
           // get ID which consists of route, direction, origin-departure time, possibly a path identifier (for feed 1.)
-          NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb);
+          NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb, _routesWithReverseRTDirections);
 
           // If we were able to parse the trip ID, there are various fixes
           // we may need to apply.
@@ -224,6 +232,9 @@ public class TripUpdateProcessor {
             tub.getStopTimeUpdateBuilderList().forEach(stub -> {
               if (!(stub.getStopId().endsWith("N") || stub.getStopId().endsWith("S"))) {
                 stub.setStopId(stub.getStopId() + rtid.getDirection());
+              } else if (_routesWithReverseRTDirections.contains(tb.getRouteId())) {
+                String stopId = stub.getStopId();
+                stub.setStopId(stopId.substring(0, stopId.length() - 1) + rtid.getDirection());
               }
             });
 
@@ -266,8 +277,9 @@ public class TripUpdateProcessor {
         for (TripMatchResult result : matchesByTrip.values()) {
           if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
             if (result.hasResult() && !result.lastStopMatches()) {
-              _log.debug("no stop match rt={} static={}. RT last stop={}, static last stop={}",
+              _log.debug("no stop match rt={} static={} {}. RT last stop={}, static last stop={}",
                       result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
+                      (result.getResult().getStopTimes().get(0).getDepartureTime() / 60) * 100,
                       result.getRtLastStop(), result.getStaticLastStop());
               result.setStatus(TripMatchResult.Status.NO_MATCH);
               result.setResult(null);
@@ -394,8 +406,8 @@ public class TripUpdateProcessor {
   }
 
   private TripMatchResult mergedResult(TripMatchResult first, TripMatchResult second) {
-    NyctTripId firstId = NyctTripId.buildFromTripDescriptor(first.getTripUpdate().getTrip());
-    NyctTripId secondId = NyctTripId.buildFromTripDescriptor(second.getTripUpdate().getTrip());
+    NyctTripId firstId = NyctTripId.buildFromTripDescriptor(first.getTripUpdate().getTrip(), _routesWithReverseRTDirections);
+    NyctTripId secondId = NyctTripId.buildFromTripDescriptor(second.getTripUpdate().getTrip(), _routesWithReverseRTDirections);
     if (firstId.getOriginDepartureTime() > secondId.getOriginDepartureTime())
       return mergedResult(second, first);
 

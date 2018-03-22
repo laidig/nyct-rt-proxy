@@ -22,7 +22,9 @@ import org.onebusaway.gtfs.model.Trip;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -149,9 +151,19 @@ public class NyctTripId {
    * @return parsed trip ID
    */
   public static NyctTripId buildFromTripDescriptor(GtfsRealtime.TripDescriptorOrBuilder td) {
+    return buildFromTripDescriptor(td, Collections.emptySet());
+  }
+
+  public static NyctTripId buildFromTripDescriptor(GtfsRealtime.TripDescriptorOrBuilder td, Set<String> reverseDirectionsRoutes) {
     NyctTripId id = buildFromString(td.getTripId());
-    if (td.hasRouteId() && id != null)
-      id.routeId = td.getRouteId();
+    if (id != null) {
+      if (td.hasRouteId()) {
+        id.routeId = td.getRouteId();
+      }
+      if (reverseDirectionsRoutes.contains(id.routeId)) {
+        id.directionId = id.directionId.equals("N") ? "S" : "N";
+      }
+    }
     return id;
   }
 
