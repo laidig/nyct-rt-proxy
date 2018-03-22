@@ -276,16 +276,18 @@ public class TripUpdateProcessor {
         // Read out results of matching. If there is a match, rewrite TU's trip ID. Add TU to return list.
         for (TripMatchResult result : matchesByTrip.values()) {
           if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
-            if (result.hasResult() && !result.lastStopMatches()) {
-              _log.debug("no stop match rt={} static={} {}. RT last stop={}, static last stop={}",
+            GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdateBuilder();
+            GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
+            // remove timepoints not in GTFS... in some cases this means there may be no STUs left (ex. H shuttle at H19S.)
+            removeTimepoints(tub);
+            if (result.hasResult() && (result.getTripUpdate().getStopTimeUpdateCount() == 0 || !result.lastStopMatches())) {
+              _log.info("no stop match rt={} static={} {}. RT last stop={}, static last stop={}",
                       result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
                       (result.getResult().getStopTimes().get(0).getDepartureTime() / 60) * 100,
                       result.getRtLastStop(), result.getStaticLastStop());
               result.setStatus(TripMatchResult.Status.NO_MATCH);
               result.setResult(null);
             }
-            GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdateBuilder();
-            GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
             if (result.hasResult()) {
               ActivatedTrip at = result.getResult();
               String staticTripId = at.getTrip().getId().getId();
@@ -296,8 +298,7 @@ public class TripUpdateProcessor {
             } else {
               _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
-              removeTimepoints(tub);
-              // this is only happening because of a missing stop in ATIS data...
+              // ignore ADDED trips without stops
               if (tub.getStopTimeUpdateCount() == 0)
                 continue;
               // Trip Headsign
