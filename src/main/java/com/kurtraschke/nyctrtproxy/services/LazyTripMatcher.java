@@ -140,7 +140,7 @@ public class LazyTripMatcher implements TripMatcher {
         ActivatedTrip at = new ActivatedTrip(sd, trip, stopTimes);
         TripMatchResult result = TripMatchResult.looseMatch(tu, at, delta, onServiceDay);
         // disable trips that are coerced AND on a different day
-        if (onServiceDay || delta == 0)
+        if ((onServiceDay || delta == 0) && result.lastStopMatches())
           candidates.add(result);
 
       }
