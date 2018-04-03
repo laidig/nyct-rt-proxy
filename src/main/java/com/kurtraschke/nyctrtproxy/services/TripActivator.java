@@ -16,7 +16,7 @@
 package com.kurtraschke.nyctrtproxy.services;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
-import org.onebusaway.gtfs.model.Stop;
+import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
@@ -26,16 +26,14 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
-import com.vividsolutions.jts.index.strtree.SIRtree;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.IntSummaryStatistics;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import javax.annotation.PostConstruct;
 import com.google.inject.Inject;
 import javax.inject.Named;
 
@@ -50,14 +48,8 @@ public class TripActivator {
 
   private GtfsRelationalDao _dao;
 
-  private SIRtree tripTimesTree;
-
-  private int maxLookback;
-  
   private String _agencyId = "MTA NYCT";
 
-  private Set<String> _stopIds;
-  
   private static final Logger _log = LoggerFactory.getLogger(TripActivator.class);
 
   @Inject
@@ -76,80 +68,32 @@ public class TripActivator {
     _dao = dao;
   }
 
-  @PostConstruct
-  public void start() {
-    tripTimesTree = new SIRtree();
-
-    _dao.getAllTrips().forEach(trip -> {
-      IntSummaryStatistics iss = _dao.getStopTimesForTrip(trip)
-              .stream()
-              .flatMapToInt(st -> {
-                IntStream.Builder sb = IntStream.builder();
-
-                if (st.isArrivalTimeSet()) {
-                  sb.add(st.getArrivalTime());
-                }
-
-                if (st.isDepartureTimeSet()) {
-                  sb.add(st.getDepartureTime());
-                }
-
-                return sb.build();
-              }).summaryStatistics();
-
-      tripTimesTree.insert(iss.getMin(), iss.getMax(), trip);
-    });
-    tripTimesTree.build();
-
-    maxLookback = getMaxLookback();
-
-    _stopIds = _dao.getAllStops().stream()
-            .map(s -> s.getId().getId())
-            .collect(Collectors.toSet());
-  }
-
-  private int getMaxLookback() {
-    return (int) Math.ceil(_dao.getAllStopTimes().stream()
-            .flatMapToInt(st -> {
-              IntStream.Builder sb = IntStream.builder();
-
-              if (st.isArrivalTimeSet()) {
-                sb.add(st.getArrivalTime());
-              }
-
-              if (st.isDepartureTimeSet()) {
-                sb.add(st.getDepartureTime());
-              }
-
-              return sb.build();
-            })
-            .max()
-            .getAsInt() / 86400.0);
-  }
-
   public Stream<ActivatedTrip> getTripsForRangeAndRoutes(Date start, Date end, Set<String> routeIds) {
+    List<ActivatedTrip> trips = new ArrayList<>();
     ServiceDate startDate = new ServiceDate(start);
+    for (ServiceDate sd : Arrays.asList(startDate.previous(), startDate, startDate.next())) {
+        Set<AgencyAndId> serviceIdsForDate = _csd.getServiceIdsForDate(sd);
 
-    return Stream.iterate(startDate, ServiceDate::previous)
-            .limit(maxLookback)
-            .flatMap(sd -> {
-              Set<AgencyAndId> serviceIdsForDate = _csd.getServiceIdsForDate(sd);
+        int sdOrigin = (int) (sd.getAsCalendar(_csd.getTimeZoneForAgencyId(_agencyId)).getTimeInMillis() / 1000);
 
-              int sdOrigin = (int) (sd.getAsCalendar(_csd.getTimeZoneForAgencyId(_agencyId)).getTimeInMillis() / 1000);
+        int startTime = (int) ((start.getTime() / 1000) - sdOrigin);
+        int endTime = (int) ((end.getTime() / 1000) - sdOrigin);
 
-              int startTime = (int) ((start.getTime() / 1000) - sdOrigin);
-              int endTime = (int) ((end.getTime() / 1000) - sdOrigin);
-
-              Stream<Trip> tripsStream = tripTimesTree.query(startTime, endTime).stream()
-                      .map(Trip.class::cast);
-
-              return tripsStream
-                      .filter(t -> routeIds.contains(t.getRoute().getId().getId()))
-                      .filter(t -> serviceIdsForDate.contains(t.getServiceId()))
-                      .map(t -> new ActivatedTrip(sd, t, _dao.getStopTimesForTrip(t)))
-                      .filter(at -> at.getStart() != -1); // filter trips w/o stop_times
-            });
-
+        for (Trip trip : _dao.getAllTrips()) {
+            if (routeIds.contains(trip.getRoute().getId().getId())
+                && serviceIdsForDate.contains(trip.getServiceId())) {
+                List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
+                if (stopTimes.isEmpty())
+                    continue;
+                int tripStart = stopTimes.get(0).getDepartureTime();
+                int tripEnd = stopTimes.get(stopTimes.size() - 1).getArrivalTime();
+                if (tripEnd >= startTime && tripStart <= endTime) {
+                    trips.add(new ActivatedTrip(sd, trip, stopTimes));
+                }
+            }
+        }
+    }
+    return trips.stream();
   }
 
   public Stream<ActivatedTrip> getTripsForRangeAndRoute(Date start, Date end, String routeId) {
@@ -157,7 +101,7 @@ public class TripActivator {
   }
 
   public boolean isStopInStaticData(String stop) {
-      return _stopIds.contains(stop);
+      return _dao.getStopForId(new AgencyAndId(_agencyId, stop)) != null;
   }
 
   public String getStopNameForId(String stop) {

@@ -57,7 +57,6 @@ public abstract class RtTestRunner {
 
   static {
     _injector = Guice.createInjector(getTestModule());
-    _injector.getInstance(TripActivator.class).start();
 
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
