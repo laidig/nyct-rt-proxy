@@ -34,8 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -57,6 +59,8 @@ public class LazyTripMatcher implements TripMatcher {
   private boolean _looseMatchDisabled = false;
 
   private static final Logger _log = LoggerFactory.getLogger(LazyTripMatcher.class);
+
+  private Set<String> _mergableRoutes = Sets.newHashSet("D");
 
   @Inject
   public void setGtfsRelationalDao(GtfsRelationalDao dao) {
@@ -81,6 +85,10 @@ public class LazyTripMatcher implements TripMatcher {
 
   public void setLooseMatchDisabled(boolean looseMatchDisabled) {
     _looseMatchDisabled = looseMatchDisabled;
+  }
+
+  public void setMergableRoutes(String routesStr) {
+      _mergableRoutes = new HashSet<>(Arrays.asList(routesStr.split(",")));
   }
 
   @Override
@@ -140,7 +148,7 @@ public class LazyTripMatcher implements TripMatcher {
         ActivatedTrip at = new ActivatedTrip(sd, trip, stopTimes);
         TripMatchResult result = TripMatchResult.looseMatch(tu, at, delta, onServiceDay);
         // disable trips that are coerced AND on a different day
-        if ((onServiceDay || delta == 0) && result.lastStopMatches())
+        if ((onServiceDay || delta == 0) && (result.lastStopMatches() || _mergableRoutes.contains(tu.getTrip().getRouteId())))
           candidates.add(result);
 
       }
