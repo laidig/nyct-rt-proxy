@@ -34,6 +34,7 @@ import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
+import com.kurtraschke.nyctrtproxy.transform.StopIdTransformStrategy;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,8 @@ public class TripUpdateProcessor {
   private Map<String, String> _addToTripReplacementPeriodByRoute = ImmutableMap.of("6", "6X");
 
   private Set<String> _routesWithReverseRTDirections = Collections.emptySet();
+
+  private StopIdTransformStrategy _stopIdTransformStrategy = null;
 
   private int _latencyLimit = 300;
 
@@ -123,6 +126,10 @@ public class TripUpdateProcessor {
     _listener = listener;
   }
 
+  @Inject(optional = true)
+  public void setStopIdTransformStrategy(StopIdTransformStrategy stopIdTransformStrategy) {
+    _stopIdTransformStrategy = stopIdTransformStrategy;
+  }
 
   @Inject
   public void setTripActivator(TripActivator tripActivator) {
@@ -235,6 +242,11 @@ public class TripUpdateProcessor {
               } else if (_routesWithReverseRTDirections.contains(tb.getRouteId())) {
                 String stopId = stub.getStopId();
                 stub.setStopId(stopId.substring(0, stopId.length() - 1) + rtid.getDirection());
+              }
+              if (_stopIdTransformStrategy != null) {
+                String stopId = stub.getStopId();
+                stopId = _stopIdTransformStrategy.transform(rtid.getRouteId(), rtid.getDirection(), stopId);
+                stub.setStopId(stopId);
               }
             });
 
