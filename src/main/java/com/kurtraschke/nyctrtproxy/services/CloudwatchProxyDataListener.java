@@ -45,8 +45,8 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
   private static final Logger _log = LoggerFactory.getLogger(CloudwatchProxyDataListener.class);
 
   @Inject(optional = true)
-  @Named("cloudwatch.namespace")
-  private String _namespace;
+  @Named("cloudwatch.env")
+  private String _env;
 
   @Inject(optional = true)
   @Named("cloudwatch.accessKey")
@@ -55,6 +55,10 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
   @Inject(optional = true)
   @Named("cloudwatch.secretKey")
   private String _secretKey;
+
+  @Inject(optional = true)
+  @Named("cloudwatch.region")
+  private String _region;
 
   private boolean _disabled = false;
 
@@ -66,7 +70,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
 
   @PostConstruct
   public void init() {
-    if (_secretKey == null || _accessKey == null || _namespace == null) {
+    if (_secretKey == null || _accessKey == null || _env == null || _region == null) {
       _log.info("No AWS credentials supplied, disabling cloudwatch");
       _disabled = true;
       return;
@@ -74,6 +78,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     BasicAWSCredentials cred = new BasicAWSCredentials(_accessKey, _secretKey);
     _client = AmazonCloudWatchAsyncClientBuilder.standard()
             .withCredentials(new AWSStaticCredentialsProvider(cred))
+            .withRegion(_region)
             .build();
     _handler = new AsyncHandler<PutMetricDataRequest, PutMetricDataResult>() {
       @Override
@@ -89,52 +94,83 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
   }
 
   @Override
-  public void reportMatchesForRoute(String routeId, MatchMetrics metrics) {
+  public void reportMatchesForRoute(String routeId, MatchMetrics metrics, String namespace) {
     Date timestamp = new Date();
     Dimension dim = new Dimension();
     dim.setName("route");
     dim.setValue(routeId);
-    if (!reportMatches(timestamp, dim, metrics) && !_disabled)
+    if (!processReportSubwayMatches(timestamp, dim, metrics, namespace) && !_disabled)
       _log.info("Cloudwatch: no data reported for route={}", routeId);
     _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
   @Override
-  public void reportMatchesForFeed(String feedId, MatchMetrics metrics) {
+  public void reportMatchesForSubwayFeed(String feedId, MatchMetrics metrics, String namespace) {
     Date timestamp = new Date();
     Dimension dim = new Dimension();
     dim.setName("feed");
     dim.setValue(feedId);
-    if (!reportMatches(timestamp, dim, metrics) && !_disabled)
+    if (!processReportSubwayMatches(timestamp, dim, metrics, namespace) && !_disabled)
       _log.info("Cloudwatch: no data reported for feed={}", feedId);
     _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
   @Override
-  public void reportMatchesTotal(MatchMetrics metrics) {
+  public void reportMatchesForTripUpdateFeed(String feedId, MatchMetrics metrics, String namespace) {
     Date timestamp = new Date();
-    if (!reportMatches(timestamp, null, metrics) && !_disabled)
+    Dimension dim = new Dimension();
+    dim.setName("feed");
+    dim.setValue(feedId);
+    if (!processReportTripUpdateMatches(timestamp, dim, metrics, namespace) && !_disabled)
+      _log.info("Cloudwatch: no data reported for feed={}", feedId);
+    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips());
+  }
+
+  @Override
+  public void reportMatchesTotal(MatchMetrics metrics, String namespace) {
+    Date timestamp = new Date();
+    if (!processReportSubwayMatches(timestamp, null, metrics, namespace) && !_disabled)
       _log.info("Cloudwatch: no data reported for total metrics.");
     _log.info("time={} total: nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}, nDuplicates={}, nMergedTrips={}", timestamp, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips(), metrics.getDuplicates(), metrics.getMergedTrips());
   }
 
-  private boolean reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {
+  private boolean processReportTripUpdateMatches(Date timestamp, Dimension dim, MatchMetrics metrics, String namespace){
+    if (_disabled)
+      return false;
+
+    Set<MetricDatum> data = metrics.getMinimalReportedMetrics(dim, timestamp);
+    if (data.isEmpty())
+      return false;
+
+    publishMetric(namespace, data);
+
+    return true;
+  }
+
+  private boolean processReportSubwayMatches(Date timestamp, Dimension dim, MatchMetrics metrics, String namespace) {
     if (_disabled)
       return false;
 
     Set<MetricDatum> data = metrics.getReportedMetrics(_verbose, dim, timestamp);
     if (data.isEmpty())
       return false;
-    PutMetricDataRequest request = new PutMetricDataRequest()
-            .withMetricData(data)
-            .withNamespace(_namespace);
 
-    _client.putMetricDataAsync(request, _handler);
+    publishMetric(namespace, data);
+
     return true;
   }
 
-  public void setNamespace(String namespace) {
-    _namespace = namespace;
+  private void publishMetric(String namespace, Set<MetricDatum> data){
+    PutMetricDataRequest request = new PutMetricDataRequest();
+    request.setMetricData(data);
+    if(namespace != null) {
+      request.setNamespace(namespace + ":" + _env);
+    }
+    _client.putMetricDataAsync(request, _handler);
+  }
+
+  public void setEnv(String env) {
+    _env = env;
   }
 
   public void setAccessKey(String accessKey) {
@@ -145,7 +181,11 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     _secretKey = secretKey;
   }
 
+  public void setRegion(String region) {
+    _region = region;
+  }
+
   public void setVerbose(boolean verbose) {
-    _verbose = _verbose;
+    _verbose = verbose;
   }
 }

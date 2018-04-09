@@ -30,10 +30,7 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.google.transit.realtime.GtfsRealtimeOneBusAway;
-import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
-import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
-import com.kurtraschke.nyctrtproxy.model.NyctTripId;
-import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
+import com.kurtraschke.nyctrtproxy.model.*;
 import com.kurtraschke.nyctrtproxy.transform.StopIdTransformStrategy;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -86,6 +83,8 @@ public class TripUpdateProcessor {
 
   private boolean _allowDuplicates = false;
 
+  private String _cloudwatchNamespace = null;
+
   // config
   @Inject(optional = true)
   public void setLatencyLimit(@Named("NYCT.latencyLimit") int limit) {
@@ -115,6 +114,15 @@ public class TripUpdateProcessor {
     Type type = new TypeToken<Set<String>>(){}.getType();
     _routesWithReverseRTDirections = new Gson().fromJson(json, type);
   }
+
+  @Inject(optional = true)
+  public void setCloudwatchNamespace(@Named("cloudwatch.namespace") String namespace) {
+    _cloudwatchNamespace = namespace;
+  }
+
+    public String getCloudwatchNamespace() {
+        return _cloudwatchNamespace;
+    }
 
   @Inject(optional = true)
   public void setAllowDuplicates(boolean allowDuplicates) {
@@ -161,7 +169,7 @@ public class TripUpdateProcessor {
     if (_latencyLimit > 0 && feedMetrics.getLatency() > _latencyLimit) {
       _log.info("Feed {} ignored, too high latency = {}", feedId, feedMetrics.getLatency());
       if (_listener != null)
-        _listener.reportMatchesForFeed(feedId.toString(), feedMetrics);
+        _listener.reportMatchesForSubwayFeed(feedId.toString(), feedMetrics, _cloudwatchNamespace);
       return Collections.emptyList();
     }
 
@@ -278,7 +286,7 @@ public class TripUpdateProcessor {
               TripMatchResult result = dups.get(i);
               _log.debug("dropping duplicate in static trip={}, RT trip={} ({}). Better trip is {} ({})",
                       best.getTripId(), result.getRtTripId(), result.getStatus(), best.getRtTripId(), best.getStatus());
-              result.setStatus(TripMatchResult.Status.NO_MATCH);
+              result.setStatus(Status.NO_MATCH);
               result.setResult(null);
             }
           }
@@ -287,7 +295,7 @@ public class TripUpdateProcessor {
         Set<String> matchedTripIds = new HashSet<>();
         // Read out results of matching. If there is a match, rewrite TU's trip ID. Add TU to return list.
         for (TripMatchResult result : matchesByTrip.values()) {
-          if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
+          if (!result.getStatus().equals(Status.MERGED)) {
             GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdateBuilder();
             GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
             // remove timepoints not in GTFS... in some cases this means there may be no STUs left (ex. H shuttle at H19S.)
@@ -297,7 +305,7 @@ public class TripUpdateProcessor {
                       result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
                       (result.getResult().getStopTimes().get(0).getDepartureTime() / 60) * 100,
                       result.getRtLastStop(), result.getStaticLastStop());
-              result.setStatus(TripMatchResult.Status.NO_MATCH);
+              result.setStatus(Status.NO_MATCH);
               result.setResult(null);
             }
             if (result.hasResult()) {
@@ -360,12 +368,12 @@ public class TripUpdateProcessor {
         }
 
         if (_listener != null)
-          _listener.reportMatchesForRoute(routeId, routeMetrics);
+          _listener.reportMatchesForRoute(routeId, routeMetrics, _cloudwatchNamespace);
         }
       }
 
     if (_listener != null)
-      _listener.reportMatchesForFeed(feedId.toString(), feedMetrics);
+      _listener.reportMatchesForSubwayFeed(feedId.toString(), feedMetrics, _cloudwatchNamespace);
 
     _log.info("feed={}, expired TUs={}", feedId, nExpiredTus);
     return ret;
@@ -436,7 +444,7 @@ public class TripUpdateProcessor {
         while (stusToAdd.hasNext()) {
           update.addStopTimeUpdate(stusToAdd.next());
         }
-        second.setStatus(TripMatchResult.Status.MERGED);
+        second.setStatus(Status.MERGED);
         return first;
       }
     }

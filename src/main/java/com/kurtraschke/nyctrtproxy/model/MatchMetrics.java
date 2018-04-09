@@ -34,7 +34,7 @@ public class MatchMetrics {
 
   private int nMatchedTrips = 0, nCancelledTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
-    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0, nMergedTrips = 0;
+    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0, nMergedTrips = 0, nMultipleMatchedTrips = 0;
 
   private long latency = -1;
 
@@ -53,7 +53,11 @@ public class MatchMetrics {
       }
       tripIds.add(tripId);
     }
-    switch (result.getStatus()) {
+    addStatus(result.getStatus());
+  }
+
+  public void addStatus(Status status){
+    switch (status) {
       case BAD_TRIP_ID:
         nAddedTrips++;
         nBadId++;
@@ -77,7 +81,7 @@ public class MatchMetrics {
       case LOOSE_MATCH_ON_OTHER_SERVICE_DATE:
         nMatchedTrips++;
         nLooseMatchOtherDay++;
-        break;
+       break;
       case LOOSE_MATCH_COERCION:
         nMatchedTrips++;
         nLooseMatchCoercion++;
@@ -85,6 +89,9 @@ public class MatchMetrics {
       case MERGED:
         nMatchedTrips++;
         nMergedTrips++;
+        break;
+      case MULTI_MATCH:
+        nMultipleMatchedTrips++;
         break;
     }
   }
@@ -124,7 +131,26 @@ public class MatchMetrics {
   public Set<MetricDatum> getReportedMetrics(boolean verbose, Dimension dim, Date timestamp) {
 
     Set<MetricDatum> data = Sets.newHashSet();
+    addLatencyMetrics(data, dim, timestamp);
 
+    if (nMatchedTrips + nAddedTrips > 0) {
+      data.addAll(verbose ? getMatchMetricsVerbose(dim, timestamp) : getMatchMetricsNonVerbose(dim, timestamp));
+    }
+
+    return data;
+  }
+
+  public Set<MetricDatum> getMinimalReportedMetrics(Dimension dim, Date timestamp) {
+
+    Set<MetricDatum> data = Sets.newHashSet();
+    addLatencyMetrics(data, dim, timestamp);
+
+    data.addAll(getMatchMetricsMinimal(dim, timestamp));
+
+    return data;
+  }
+
+  private void addLatencyMetrics(Set<MetricDatum> data, Dimension dim, Date timestamp){
     if (latency >= 0) {
       MetricDatum dLatency = new MetricDatum().withMetricName("Latency")
               .withTimestamp(timestamp)
@@ -135,12 +161,14 @@ public class MatchMetrics {
       }
       data.add(dLatency);
     }
+  }
 
-    if (nMatchedTrips + nAddedTrips > 0) {
-      data.addAll(verbose ? getMatchMetricsVerbose(dim, timestamp) : getMatchMetricsNonVerbose(dim, timestamp));
-    }
-
-    return data;
+  private Set<MetricDatum> getMatchMetricsMinimal(Dimension dim, Date timestamp){
+    MetricDatum dRecordsIn = metricCount(timestamp, "RecordsIn", nRecordsIn, dim);
+    MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
+    MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
+    MetricDatum dRecordsOut = metricCount(timestamp, "RecordsOut", nMatchedTrips, dim);
+    return Sets.newHashSet(dRecordsIn, dMatched, dAdded, dRecordsOut);
   }
 
   private Set<MetricDatum> getMatchMetricsNonVerbose(Dimension dim, Date timestamp) {

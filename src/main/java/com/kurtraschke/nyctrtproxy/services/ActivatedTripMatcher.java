@@ -24,6 +24,7 @@ import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.model.Status;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 
 import javax.inject.Named;
@@ -78,11 +79,11 @@ public class ActivatedTripMatcher implements TripMatcher {
     Optional<ActivatedTrip> at = candidateMatches.stream().findFirst();
     if (at.isPresent()) {
       if (_routesUsingAlternateIdFormat.contains(routeId))
-        return new TripMatchResult(tu, TripMatchResult.Status.LOOSE_MATCH, at.get(), 0);
+        return new TripMatchResult(tu, Status.LOOSE_MATCH, at.get(), 0);
       else
         return new TripMatchResult(tu, at.get());
     }
-    return new TripMatchResult(tu, TripMatchResult.Status.NO_MATCH);
+    return new TripMatchResult(tu, Status.NO_MATCH);
   }
 
   @Override

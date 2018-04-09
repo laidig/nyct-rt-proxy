@@ -225,7 +225,7 @@ public class ProxyProvider {
     _tripUpdatesSink.handleFullUpdate(grfu);
 
     if (_listener != null)
-      _listener.reportMatchesTotal(totalMetrics);
+      _listener.reportMatchesTotal(totalMetrics, _processor.getCloudwatchNamespace());
   }
 
 

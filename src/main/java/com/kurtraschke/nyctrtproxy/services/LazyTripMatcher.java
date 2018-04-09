@@ -20,6 +20,7 @@ import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.model.Status;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
 import org.onebusaway.gtfs.model.AgencyAndId;
@@ -94,7 +95,7 @@ public class LazyTripMatcher implements TripMatcher {
   @Override
   public TripMatchResult match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
     if (id == null)
-      return new TripMatchResult(tu, TripMatchResult.Status.BAD_TRIP_ID);
+      return new TripMatchResult(tu, Status.BAD_TRIP_ID);
 
     ServiceDate sd = new ServiceDate(new Date(timestamp * 1000));
     Set<TripMatchResult> candidates = Sets.newHashSet();
@@ -106,7 +107,7 @@ public class LazyTripMatcher implements TripMatcher {
       foundTripWithStartTime |= addCandidates(tu, id.relativeToPreviousDay(), sd.previous(), candidates);
 
     if (candidates.isEmpty())
-      return new TripMatchResult(tu, foundTripWithStartTime ? TripMatchResult.Status.NO_MATCH : TripMatchResult.Status.NO_TRIP_WITH_START_DATE);
+      return new TripMatchResult(tu, foundTripWithStartTime ? Status.NO_MATCH : Status.NO_TRIP_WITH_START_DATE);
     else
       return Collections.max(candidates); // get BEST match. see TripMatchResult::compareTo
   }

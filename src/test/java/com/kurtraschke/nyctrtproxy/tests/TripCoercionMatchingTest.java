@@ -17,6 +17,7 @@ package com.kurtraschke.nyctrtproxy.tests;
 
 import com.google.transit.realtime.GtfsRealtime;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.model.Status;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 
 import static org.junit.Assert.assertEquals;
@@ -65,13 +66,13 @@ public class TripCoercionMatchingTest extends LazyMatchingTest {
     assertTrue(result.hasResult());
     String matchedTripId = result.getResult().getTrip().getId().getId();
     assertEquals(expected, matchedTripId);
-    assertEquals(result.getStatus(), TripMatchResult.Status.LOOSE_MATCH);
+    assertEquals(result.getStatus(), Status.LOOSE_MATCH);
   }
 
   private static void assertCoercedMatch(TripMatchResult result, String expected) {
     assertTrue(result.hasResult());
     String matchedTripId = result.getResult().getTrip().getId().getId();
     assertEquals(expected, matchedTripId);
-    assertEquals(result.getStatus(), TripMatchResult.Status.LOOSE_MATCH_COERCION);
+    assertEquals(result.getStatus(), Status.LOOSE_MATCH_COERCION);
   }
 }
