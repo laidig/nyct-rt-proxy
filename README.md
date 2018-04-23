@@ -19,7 +19,7 @@ Run the program:
 
     java -jar nyct-rt-proxy-1.0-SNAPSHOT-withAllDependencies.jar --config config.txt
 
-### config.txt example
+### config example
 
 Here is an example `config.txt`. Uncomment the `cloudwatch.*` values to send metrics to Cloudwatch (disabled otherwise):
 
