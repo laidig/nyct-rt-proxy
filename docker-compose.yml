@@ -1,0 +1,6 @@
+version: 3
+services:
+    nyct-rt-proxy:
+        ports:
+            - '8081:8081'
+        image: nyct-rt-proxy
