@@ -1,6 +1,8 @@
-version: 3
+version: "2.3"
 services:
     nyct-rt-proxy:
         ports:
-            - '8081:8081'
+            - '8001:8001'
         image: nyct-rt-proxy
+        cpus: '1.0'
+        mem_limit: 384M
