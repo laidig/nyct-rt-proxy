@@ -17,6 +17,9 @@ package com.kurtraschke.nyctrtproxy.model;
 
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdateOrBuilder;
+import org.onebusaway.gtfs.model.StopTime;
+
+import java.util.ListIterator;
 
 /**
  * Encapsulates the results of matching a RT TripUpdate.
@@ -119,6 +122,29 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
     String staticStop = getStaticLastStop();
     String rtStop = getRtLastStop();
     return staticStop.equals(rtStop);
+  }
+
+  /**
+   * Check that the stops form the first STU in the TU to the static trip match.
+   */
+  public boolean stopsMatchToEnd() {
+    if (!hasResult())
+      throw new IllegalArgumentException("Cannot call lastStopMatches on a match result without an ActivatedTrip");
+    // Step through in reverse
+    ListIterator<StopTime> stopTimes = result.getStopTimes().listIterator(result.getStopTimes().size());
+    ListIterator<TripUpdate.StopTimeUpdate> stopUpdates = tripUpdate.getStopTimeUpdateList()
+            .listIterator(tripUpdate.getStopTimeUpdateCount());
+    while(stopUpdates.hasPrevious()) {
+      if (!stopTimes.hasPrevious()) {
+        return false;
+      }
+      String rtStop = stopUpdates.previous().getStopId();
+      String staticStop = stopTimes.previous().getStop().getId().getId();
+      if (!rtStop.equals(staticStop)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public String getTripId() {

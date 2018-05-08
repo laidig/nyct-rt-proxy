@@ -300,7 +300,7 @@ public class TripUpdateProcessor {
             GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
             // remove timepoints not in GTFS... in some cases this means there may be no STUs left (ex. H shuttle at H19S.)
             removeTimepoints(tub);
-            if (result.hasResult() && (result.getTripUpdate().getStopTimeUpdateCount() == 0 || !result.lastStopMatches())) {
+            if (result.hasResult() && (result.getTripUpdate().getStopTimeUpdateCount() == 0 || !result.stopsMatchToEnd())) {
               _log.info("no stop match rt={} static={} {}. RT last stop={}, static last stop={}",
                       result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
                       (result.getResult().getStopTimes().get(0).getDepartureTime() / 60) * 100,
