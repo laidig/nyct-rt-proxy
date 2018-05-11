@@ -46,27 +46,27 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
 
   @Inject(optional = true)
   @Named("cloudwatch.env")
-  private String _env;
+  protected String _env;
 
   @Inject(optional = true)
   @Named("cloudwatch.accessKey")
-  private String _accessKey;
+  protected String _accessKey;
 
   @Inject(optional = true)
   @Named("cloudwatch.secretKey")
-  private String _secretKey;
+  protected String _secretKey;
 
   @Inject(optional = true)
   @Named("cloudwatch.region")
-  private String _region;
+  protected String _region;
 
-  private boolean _disabled = false;
+  protected boolean _disabled = false;
 
-  private boolean _verbose = false;
+  protected boolean _verbose = false;
 
-  private AmazonCloudWatchAsync _client;
+  protected AmazonCloudWatchAsync _client;
 
-  private AsyncHandler<PutMetricDataRequest, PutMetricDataResult> _handler;
+  protected AsyncHandler<PutMetricDataRequest, PutMetricDataResult> _handler;
 
   @PostConstruct
   public void init() {
