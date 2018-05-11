@@ -53,35 +53,8 @@ public class SanityTest extends RtTestRunner {
   }
 
   @Test
-  public void test11_2017_03_13() throws Exception {
-    test(11, "11_2017-03-13.pb", 8, 0);
-  }
-
-  // this is specifically for testing trip coercion
-  @Test
-  public void test11_2017_03_21() throws Exception {
-    test(11, "11_2017-03-21.pb", 6, 0);
-  }
-
-  @Test
   public void test16_2017_03_13() throws Exception {
     test(16, "16_2017-03-13.pb", 58, 44);
-  }
-
-  @Test
-  public void test21_2017_03_13() throws Exception {
-    test(21, "21_2017-03-13.pb", 29, 25);
-  }
-
-  @Test
-  public void test21_2017_04_20() throws Exception {
-    test(21, "21_2017-04-20.pb", 40, 4);
-  }
-
-  // Test overnight service
-  @Test
-  public void test11_midnight() throws Exception {
-    test(11, "11_2017-03-23_00:33.pb", 5, 0);
   }
 
   // Test 5X -> 5 rewriting
@@ -153,6 +126,5 @@ public class SanityTest extends RtTestRunner {
     Trip trip = getTrip(tripUpdate);
     assertNull(trip);
   }
-
 
 }
