@@ -21,6 +21,7 @@ import com.kurtraschke.nyctrtproxy.model.Status;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class TripCoercionMatchingTest extends LazyMatchingTest {
@@ -36,17 +37,19 @@ public class TripCoercionMatchingTest extends LazyMatchingTest {
   //  S20170321WKD_066100SI..N (11:01:00)  --> R20161106WKD_066100_SI.N03R
   //  S20170321WKD_066600SI..S (11:06:00)  --> R20161106WKD_066600_SI.S03R
 
+  // Update now that we are checking stops to end - northbound trains are skipping stops.
+
   @Override
   public void checkMatchResult(long timestamp, NyctTripId rtid, GtfsRealtime.TripUpdateOrBuilder tripUpdate, TripMatchResult result) {
     switch(rtid.getOriginDepartureTime()) {
       case 60100:
-        assertLooseMatch(result, "R20161106WKD_060100_SI.N03R");
+        assertNoMatch(result);
         break;
       case 60600:
         assertLooseMatch(result, "R20161106WKD_060600_SI.S03R");
         break;
       case 63100:
-        assertLooseMatch(result, "R20161106WKD_063100_SI.N03R");
+        assertNoMatch(result);
         break;
       case 63800:
         assertCoercedMatch(result, "R20161106WKD_063600_SI.S03R");
@@ -74,5 +77,9 @@ public class TripCoercionMatchingTest extends LazyMatchingTest {
     String matchedTripId = result.getResult().getTrip().getId().getId();
     assertEquals(expected, matchedTripId);
     assertEquals(result.getStatus(), Status.LOOSE_MATCH_COERCION);
+  }
+
+  private static void assertNoMatch(TripMatchResult result) {
+    assertFalse(result.getStatus().isMatch());
   }
 }
