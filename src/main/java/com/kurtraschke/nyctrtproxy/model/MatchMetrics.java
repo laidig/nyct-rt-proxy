@@ -35,6 +35,7 @@ public class MatchMetrics {
   private int nMatchedTrips = 0, nCancelledTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
     nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0, nMergedTrips = 0, nMultipleMatchedTrips = 0;
+  private int nTotalStopTimeUpdatesForAddedTrips = 0;
 
   private long latency = -1;
 
@@ -54,6 +55,9 @@ public class MatchMetrics {
       tripIds.add(tripId);
     }
     addStatus(result.getStatus());
+    if (result.getStatus().equals(Status.NO_MATCH)) {
+      nTotalStopTimeUpdatesForAddedTrips += result.getTripUpdate().getStopTimeUpdateCount();
+    }
   }
 
   public void addStatus(Status status){
@@ -179,7 +183,9 @@ public class MatchMetrics {
     MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
     MetricDatum dMerged = metricCount(timestamp, "MergedTrips", nMergedTrips, dim);
     MetricDatum dRecordsOut = metricCount(timestamp, "RecordsOut", nAddedTrips + nMatchedTrips + nCancelledTrips, dim);
-    return Sets.newHashSet(dRecordsIn, dExpiredUpdates, dMatched, dAdded, dCancelled, dMerged, dRecordsOut);
+    MetricDatum dAverageStopsForAddedTrips = metricCount(timestamp, "AverageStopsForAdded",
+            Math.round(nTotalStopTimeUpdatesForAddedTrips / nAddedTrips), dim);
+    return Sets.newHashSet(dRecordsIn, dExpiredUpdates, dMatched, dAdded, dCancelled, dMerged, dRecordsOut, dAverageStopsForAddedTrips);
   }
 
   private Set<MetricDatum> getMatchMetricsVerbose(Dimension dim, Date timestamp) {
