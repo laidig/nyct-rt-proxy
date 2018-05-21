@@ -186,9 +186,9 @@ public class MatchMetrics {
     MetricDatum dMerged = metricCount(timestamp, "MergedTrips", nMergedTrips, dim);
     MetricDatum dRecordsOut = metricCount(timestamp, "RecordsOut", nAddedTrips + nMatchedTrips + nCancelledTrips, dim);
     MetricDatum dAverageStopsForAddedTrips = metricCount(timestamp, "AverageStopsForAdded",
-            Math.round(nTotalStopTimeUpdatesForAddedTrips / nAddedTrips), dim);
+            nAddedTrips > 0 ? Math.round(nTotalStopTimeUpdatesForAddedTrips / nAddedTrips) : 0, dim);
     MetricDatum dAverageStopsForMatchedTrips = metricCount(timestamp, "AverageStopsForMatched",
-            Math.round(nTotalStopTimeUpdatesForMatchedTrips / nMatchedTrips), dim);
+            nMatchedTrips > 0 ? Math.round(nTotalStopTimeUpdatesForMatchedTrips / nMatchedTrips) : 0, dim);
     return Sets.newHashSet(dRecordsIn, dExpiredUpdates, dMatched, dAdded, dCancelled, dMerged, dRecordsOut,
             dAverageStopsForAddedTrips, dAverageStopsForMatchedTrips);
   }
