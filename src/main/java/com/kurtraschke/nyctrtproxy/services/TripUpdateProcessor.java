@@ -236,6 +236,9 @@ public class TripUpdateProcessor {
           // rewrite route ID for some routes
           tb.setRouteId(realtimeToStaticRouteMap.getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
+          // remove timepoints not in GTFS... in some cases this means there may be no STUs left (ex. H shuttle at H19S.)
+          removeTimepoints(tub);
+
           // get ID which consists of route, direction, origin-departure time, possibly a path identifier (for feed 1.)
           NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb, _routesWithReverseRTDirections);
 
@@ -298,13 +301,10 @@ public class TripUpdateProcessor {
           if (!result.getStatus().equals(Status.MERGED)) {
             GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdateBuilder();
             GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
-            // remove timepoints not in GTFS... in some cases this means there may be no STUs left (ex. H shuttle at H19S.)
-            removeTimepoints(tub);
-            if (result.hasResult() && (result.getTripUpdate().getStopTimeUpdateCount() == 0 || !result.lastStopMatches())) {
-              _log.info("no stop match rt={} static={} {}. RT last stop={}, static last stop={}",
+            if (result.hasResult() && (result.getTripUpdate().getStopTimeUpdateCount() == 0 || !result.stopsMatchToEnd())) {
+              _log.info("no stop match rt={} static={} {}",
                       result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId(),
-                      (result.getResult().getStopTimes().get(0).getDepartureTime() / 60) * 100,
-                      result.getRtLastStop(), result.getStaticLastStop());
+                      (result.getResult().getStopTimes().get(0).getDepartureTime() / 60) * 100);
               result.setStatus(Status.NO_MATCH);
               result.setResult(null);
             }

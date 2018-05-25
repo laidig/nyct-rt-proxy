@@ -19,7 +19,6 @@ import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
-import org.junit.Test;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.slf4j.Logger;
@@ -32,65 +31,17 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
-public class SanityTest extends RtTestRunner {
+public abstract class SanityTest extends RtTestRunner {
 
   private static final Logger _log = LoggerFactory.getLogger(SanityTest.class);
 
   @Inject
-  private TripUpdateProcessor _processor;
+  protected TripUpdateProcessor _processor;
 
   @Inject
   private GtfsRelationalDao _dao;
 
-  @Test
-  public void test1_2017_03_13() throws Exception {
-    test(1, "1_2017-03-13.pb", 188, 28);
-  }
-
-  @Test
-  public void test2_2017_03_13() throws Exception {
-    test(2, "2_2017-03-13.pb", 28, 0);
-  }
-
-  @Test
-  public void test11_2017_03_13() throws Exception {
-    test(11, "11_2017-03-13.pb", 8, 0);
-  }
-
-  // this is specifically for testing trip coercion
-  @Test
-  public void test11_2017_03_21() throws Exception {
-    test(11, "11_2017-03-21.pb", 6, 0);
-  }
-
-  @Test
-  public void test16_2017_03_13() throws Exception {
-    test(16, "16_2017-03-13.pb", 58, 44);
-  }
-
-  @Test
-  public void test21_2017_03_13() throws Exception {
-    test(21, "21_2017-03-13.pb", 29, 25);
-  }
-
-  @Test
-  public void test21_2017_04_20() throws Exception {
-    test(21, "21_2017-04-20.pb", 40, 4);
-  }
-
-  // Test overnight service
-  @Test
-  public void test11_midnight() throws Exception {
-    test(11, "11_2017-03-23_00:33.pb", 5, 0);
-  }
-
-  // Test 5X -> 5 rewriting
-  @Test
-  public void test1_peak() throws Exception {
-    test(1, "1_peak_sample.pb", 268, 20);
-  }
-
-  private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
+  protected void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
     FeedMessage msg = readFeedMessage(protobuf);
     List<TripUpdate> updates = _processor.processFeed(feedId, msg, new MatchMetrics());
 
@@ -153,6 +104,5 @@ public class SanityTest extends RtTestRunner {
     Trip trip = getTrip(tripUpdate);
     assertNull(trip);
   }
-
 
 }

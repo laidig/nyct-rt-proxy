@@ -51,7 +51,7 @@ public abstract class RtTestRunner {
   private GtfsRelationalDao _dao;
 
   protected static ExtensionRegistry _extensionRegistry;
-  protected static String _agencyId = "MTA NYCT";
+  protected String _agencyId = "MTA NYCT";
 
   private static Injector _injector;
 
@@ -81,6 +81,10 @@ public abstract class RtTestRunner {
   }
 
   protected static Module getTestModule() {
+    return getTestModule("google_transit.zip", "MTA NYCT", false);
+  }
+
+  protected static Module getTestModule(String gtfsPath, String agencyId, boolean cancelUnmatchedTrips) {
     return new AbstractModule() {
       @Override protected void configure() {
         bind(CalendarServiceData.class)
@@ -89,7 +93,7 @@ public abstract class RtTestRunner {
 
         bind(File.class)
                 .annotatedWith(Names.named("NYCT.gtfsPath"))
-                .toInstance(new File(TestCase.class.getResource("/google_transit.zip").getFile()));
+                .toInstance(new File(TestCase.class.getResource("/" + gtfsPath).getFile()));
 
         bind(GtfsRelationalDao.class)
                 .toProvider(GtfsRelationalDaoProvider.class)
@@ -100,23 +104,31 @@ public abstract class RtTestRunner {
         bind(ProxyDataListener.class)
                 .toInstance(listener);
 
+        LazyTripMatcher ltm = new LazyTripMatcher();
+        ltm.setAgencyMatchId(agencyId);
         bind(TripMatcher.class)
-                .toInstance(new LazyTripMatcher());
+                .toInstance(ltm);
 
         TripUpdateProcessor processor = new TripUpdateProcessor();
         processor.setLatencyLimit(-1);
-        processor.setCancelUnmatchedTrips(false);
+        processor.setCancelUnmatchedTrips(cancelUnmatchedTrips);
         bind(TripUpdateProcessor.class)
                 .toInstance(processor);
 
         /// needed for LazyMatchingTestCompareActivated:
 
+        TripActivator ta = new TripActivator();
+        ta.setAgencyMatchId(agencyId);
         bind(TripActivator.class)
-                .toInstance(new TripActivator());
+                .toInstance(ta);
 
         bind(ActivatedTripMatcher.class)
                 .toInstance(new ActivatedTripMatcher());
       }
     };
+  }
+
+  protected void setAgencyId(String agencyId) {
+    _agencyId = agencyId;
   }
 }
