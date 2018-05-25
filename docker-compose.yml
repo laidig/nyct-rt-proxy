@@ -3,6 +3,7 @@ services:
     nyct-rt-proxy:
         ports:
             - '8001:8001'
+        network_mode: "bridge"
         image: nyct-rt-proxy
         cpus: '1.0'
         mem_limit: 512M
